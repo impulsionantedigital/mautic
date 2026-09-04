@@ -3,6 +3,7 @@
 !.gitignore
 !.htaccess
 !.gitkeep
+!.dockerignore
 !.ddev
 !.php-cs-fixer.php
 !.github/ci-files/.my.cnf

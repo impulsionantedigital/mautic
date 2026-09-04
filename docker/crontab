@@ -1,0 +1,32 @@
+# Mautic scheduled tasks, run by supercronic inside the "cron" container.
+# All commands run as the container's default user against the app in
+# /var/www/html. Output goes to stdout/stderr, which EasyPanel captures as
+# the container's logs.
+#
+# Reference: https://docs.mautic.org/en/setup/cron-jobs
+
+# Every minute
+* * * * * cd /var/www/html && php bin/console mautic:messages:send --env=prod --no-debug -q
+* * * * * cd /var/www/html && php bin/console mautic:broadcasts:send --env=prod --no-debug -q
+* * * * * cd /var/www/html && php bin/console mautic:reports:scheduler --env=prod --no-debug -q
+
+# Every 5 minutes
+*/5 * * * * cd /var/www/html && php bin/console mautic:campaigns:trigger --env=prod --no-debug -q
+*/5 * * * * cd /var/www/html && php bin/console mautic:campaigns:rebuild --env=prod --no-debug -q
+*/5 * * * * cd /var/www/html && php bin/console mautic:campaigns:resume-stuck --env=prod --no-debug -q
+*/5 * * * * cd /var/www/html && php bin/console mautic:webhooks:process --env=prod --no-debug -q
+*/5 * * * * cd /var/www/html && php bin/console mautic:contacts:scheduled_export --env=prod --no-debug -q
+
+# Every 20 minutes
+*/20 * * * * cd /var/www/html && php bin/console mautic:import --env=prod --no-debug -q
+
+# Nightly maintenance
+0 2 * * * cd /var/www/html && php bin/console mautic:iplookup:download --env=prod --no-debug -q
+0 2 * * * cd /var/www/html && php bin/console mautic:unusedip:delete --env=prod --no-debug -q
+0 3 * * * cd /var/www/html && php bin/console mautic:segments:update --env=prod --no-debug -q
+
+# Destructive housekeeping commands - review the retention windows before
+# uncommenting, they permanently delete historical data.
+# 0 4 * * * cd /var/www/html && php bin/console mautic:maintenance:cleanup --days-old=365 --force --env=prod --no-debug -q
+# 0 4 * * * cd /var/www/html && php bin/console mautic:webhooks:delete_logs --env=prod --no-debug -q
+# 0 4 * * * cd /var/www/html && php bin/console mautic:campaign:delete-event-logs --env=prod --no-debug -q
