@@ -131,6 +131,22 @@ Discovered by testing locally against `mysql:8.0` before switching to
 `mysql:8.4`. Make sure any EasyPanel MySQL/MariaDB service is provisioned
 at a compatible version *before* creating the Mautic apps.
 
+## Bind-mount only `media/files`, `media/images`, `media/assets` — not all of `media/`
+
+First attempt bind-mounted the whole `/var/www/html/media` directory so
+web/cron/worker share uploads. That's wrong: `media/` also holds files
+generated **at build time** —`media/js/libraries.js`,
+`media/css/libraries.css`, `media/css/offline.css` (the merged/minified
+library bundle `AssetGenerationHelper` produces from `node_modules`, see
+above). Mounting an empty host directory over the whole tree hides those
+build artifacts, forcing Mautic to regenerate them at runtime on every
+single boot — slow, and was intermittently hanging requests to `/s/login`
+in production.
+
+**Fix:** three separate bind mounts, one each for `media/files`,
+`media/images`, `media/assets` (the actual user-upload directories),
+leaving the rest of `media/` as whatever the image already built.
+
 ## EasyPanel bind mounts need the host directory to exist first
 
 EasyPanel runs Docker in Swarm mode. Unlike plain `docker run`, Swarm does

@@ -38,10 +38,16 @@ duplicating detail here.
 
 ## Current state (update this as things change)
 
-- Deployed on EasyPanel at `apps-mautic-trilhasdearuanda-web.ci3zda.easypanel.host`,
-  server reformatted and redeployed clean on 2026-09-05.
+- Live and working at `https://mautic.trilhasdearuanda.com.br/` as of
+  2026-09-05, after a server reformat + clean redeploy. Custom domain DNS
+  and the media bind-mount split (see Decisions/Troubleshooting) were the
+  last two blockers, both resolved.
 - `cron` and `worker` apps have **not been created yet** in EasyPanel — only
   `web` exists so far. Follow `docs/project/DEPLOYMENT.md` steps 3-4 to add them.
+- No Docker `HEALTHCHECK` yet — zero-downtime redeploys can have a brief
+  window where the domain shows "Service is not reachable" between the
+  old container stopping and the new one finishing boot. See
+  `docs/project/TROUBLESHOOTING.md`.
 - Async messenger transports (`MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT`) are left at
   the default `sync://` — the `worker` app (once created) will sit mostly
   idle until/unless these are pointed at `doctrine://default?queue_name=...`.

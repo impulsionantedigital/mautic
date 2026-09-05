@@ -68,6 +68,66 @@ offline" page — the real exception is in
 tab in EasyPanel, or a fresh page reload if it's stuck on "Connecting to
 websocket...") and `cat var/logs/mautic_prod*.log`.
 
+## Login hangs forever after a clean, single install
+
+**Symptom:** `mautic:install` ran once, cleanly, no errors in
+`var/logs/`. Apache starts fine. `GET /` and `GET /s/dashboard` return
+302 as expected, but the browser never gets a response for `/s/login` —
+just spins.
+
+**Root cause:** the app's Storage was configured with a single Bind mount
+covering the whole `/var/www/html/media` directory. That hides the
+build-time-generated `media/js/libraries.js`/`media/css/libraries.css`/
+`media/css/offline.css` behind an empty host directory, so Mautic tries
+(and struggles) to regenerate them from `node_modules` on every request
+that needs them — including the login page.
+
+**Fix:** split the mount into three, one each for `media/files`,
+`media/images`, `media/assets`. See `docs/project/DEPLOYMENT.md` step 2
+and `docs/project/DECISIONS.md`.
+
+## "Service is not reachable" / "404 Not Found" right after a redeploy
+
+Two different EasyPanel/Traefik-level pages (not Mautic errors) seen
+during this fork's deploys:
+
+- **"Service is not reachable, make sure the service is running and
+  healthy"**: hit during a zero-downtime redeploy's handover window — the
+  old container had already been stopped but the new one hadn't finished
+  its ~30-60s boot sequence (schema check, plugin reload, cache warmup)
+  and started Apache yet. There's no Docker `HEALTHCHECK` on this image
+  yet, so Swarm/Traefik has no reliable signal for "actually ready to
+  serve HTTP" beyond "process started". Just wait and retry; a proper
+  `HEALTHCHECK` in the Dockerfile would close this gap (not implemented
+  yet — candidate for `docs/specs/`).
+- **"404 Not Found, make sure you have the correct URL and that you have
+  configured your domain correctly"**: this is Traefik saying it has no
+  route for the exact host+path requested. Seen after switching from the
+  auto-generated `*.easypanel.host` domain to a custom domain — the old
+  `*.easypanel.host` URL (e.g. bookmarked, or from an old redirect) no
+  longer has a route once it's not the app's registered domain anymore.
+  Not a bug; just don't use stale domain URLs after changing a domain.
+
+## Custom domain shows the wrong thing / doesn't resolve to this deployment
+
+**Symptom:** the app's own `*.easypanel.host` URL works, but the intended
+custom domain (e.g. `mautic.yourdomain.com.br`) gives an unrelated error —
+because it's not even reaching this server.
+
+**Root cause seen:** DNS for the custom domain was pointed at a
+*different* server's IP than the one this app is deployed on (a stale
+CNAME to another EasyPanel install, `168.231.90.62`, while this app lived
+on `167.88.33.210`).
+
+**How to check:**
+```bash
+dig +short mautic.yourdomain.com.br A
+```
+Compare against the actual IP of the EasyPanel server you deployed to
+(the one you SSH into). If they don't match, fix the DNS record (A or
+CNAME) at the domain's DNS provider — nothing on the EasyPanel/Mautic side
+can fix a wrong DNS target.
+
 ## `doctrine:migrations:version --add --all` fails during install
 
 **Symptom:** `var/logs/mautic_prod-*.log` shows

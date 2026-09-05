@@ -48,14 +48,25 @@ MAUTIC_ADMIN_PASSWORD=<strong password, avoid quotes/backticks/$>
 ```
   `MAUTIC_ADMIN_EMAIL`/`_PASSWORD` only matter on the very first install
   (creating the admin user) — safe to remove after.
-- **Storage**: add a **Bind mount**, `/var/www/html/media` → a host path
-  (e.g. `/etc/easypanel/mautic-media-<slug>`). **Before saving**, SSH into
-  the EasyPanel server and run:
+- **Storage**: add **three separate Bind mounts** — for `media/files`,
+  `media/images`, and `media/assets` individually. **Do not** bind-mount
+  the whole `/var/www/html/media` directory: it also holds files generated
+  at build time (`media/js/libraries.js`, `media/css/libraries.css`,
+  `media/css/offline.css`), and mounting an empty host directory over the
+  whole tree hides those, forcing a slow/broken runtime regeneration on
+  every boot (see `docs/project/TROUBLESHOOTING.md`). **Before saving**,
+  SSH into the EasyPanel server and run:
   ```bash
-  mkdir -p /etc/easypanel/mautic-media-<slug>
+  mkdir -p /etc/easypanel/mautic-media-<slug>/{files,images,assets}
   chmod -R 777 /etc/easypanel/mautic-media-<slug>
   ```
-  Swarm bind mounts fail if the host path doesn't already exist.
+  Swarm bind mounts fail if the host path doesn't already exist. Then add:
+
+  | Host | Container |
+  |---|---|
+  | `/etc/easypanel/mautic-media-<slug>/files` | `/var/www/html/media/files` |
+  | `/etc/easypanel/mautic-media-<slug>/images` | `/var/www/html/media/images` |
+  | `/etc/easypanel/mautic-media-<slug>/assets` | `/var/www/html/media/assets` |
 - **Deploy**, and don't touch anything else until it finishes. Watch the
   logs for: `No Mautic schema found, running first-time install...` →
   `Install complete` → plugin reload → `Warming cache` → `Starting Apache`.
@@ -65,7 +76,7 @@ MAUTIC_ADMIN_PASSWORD=<strong password, avoid quotes/backticks/$>
 - Same repo/branch/Dockerfile.
 - **Deploy tab → Comando**: `cron`
 - Same env vars as web, minus `MAUTIC_ADMIN_*`.
-- Same bind mount, same host path as web.
+- Same three bind mounts, same host paths as web.
 - No domain. Deploy.
 - Expect, every minute: `job succeeded` for `mautic:messages:send`,
   `mautic:broadcasts:send`, `mautic:reports:scheduler` in the logs.
@@ -74,7 +85,7 @@ MAUTIC_ADMIN_PASSWORD=<strong password, avoid quotes/backticks/$>
 
 - Same repo/branch/Dockerfile.
 - **Comando**: `worker`
-- Same env vars (minus admin), same bind mount.
+- Same env vars (minus admin), same three bind mounts.
 - No domain. Deploy.
 - Expect: `Consuming messages from transport "failed".` — it stays quiet
   unless something fails (or unless async transports are turned on, see
