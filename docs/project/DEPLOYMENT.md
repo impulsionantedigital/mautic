@@ -74,7 +74,7 @@ MAUTIC_ADMIN_PASSWORD=<strong password, avoid quotes/backticks/$>
 ## 3. Create the "cron" app
 
 - Same repo/branch/Dockerfile.
-- **Deploy tab → Comando**: `cron`
+- **Deploy tab → Comando**: `/usr/local/bin/entrypoint.sh cron` (the bare word `cron` fails - see TROUBLESHOOTING.md)
 - Same env vars as web, minus `MAUTIC_ADMIN_*`.
 - Same three bind mounts, same host paths as web.
 - No domain. Deploy.
@@ -84,7 +84,7 @@ MAUTIC_ADMIN_PASSWORD=<strong password, avoid quotes/backticks/$>
 ## 4. Create the "worker" app
 
 - Same repo/branch/Dockerfile.
-- **Comando**: `worker`
+- **Comando**: `/usr/local/bin/entrypoint.sh worker`
 - Same env vars (minus admin), same three bind mounts.
 - No domain. Deploy.
 - Expect: `Consuming messages from transport "failed".` — it stays quiet

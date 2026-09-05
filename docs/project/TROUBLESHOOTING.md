@@ -128,6 +128,43 @@ Compare against the actual IP of the EasyPanel server you deployed to
 CNAME) at the domain's DNS provider — nothing on the EasyPanel/Mautic side
 can fix a wrong DNS target.
 
+## `cron` app: `/bin/sh: 1: cron: not found`
+
+**Symptom:** the `cron` app's "Comando" (Command override) field was set
+to the bare word `cron` (per the original deploy guide), and the
+container logs `/bin/sh: 1: cron: not found`, repeated a few times, then
+gives up.
+
+**Root cause:** EasyPanel's "Comando" field replaces the container's
+command outright rather than just supplying an argument to the image's
+`ENTRYPOINT` — so `cron` was executed as a literal binary name (there is
+none; this image uses `supercronic`, not the system `cron` daemon), not
+as `entrypoint.sh`'s `$1` role argument as intended.
+
+**Fix:** put the full invocation in "Comando" instead of a bare role name:
+```
+/usr/local/bin/entrypoint.sh cron
+```
+(and `/usr/local/bin/entrypoint.sh worker` for the worker app). Updated
+in `docs/project/DEPLOYMENT.md`.
+
+## `mautic:campaigns:resume-stuck` fails every 5 minutes: "Not enough arguments (missing: campaign-id)"
+
+**Symptom:** `cron` app logs `error running command: exit status 1` for
+`mautic:campaigns:resume-stuck` on every run.
+
+**Root cause:** this command isn't a maintenance sweep — it requires a
+specific `<campaign-id>` argument and has no "check all campaigns" mode
+(see `app/bundles/CampaignBundle/Command/ResumeStuckCampaignCommand.php`).
+It was mistakenly added to `docker/crontab` as if it were a general
+housekeeping command.
+
+**Fix:** removed from `docker/crontab`. Run it manually, per-campaign,
+when an admin identifies a specific stuck campaign:
+```
+php bin/console mautic:campaigns:resume-stuck <campaign-id> --dry-run
+```
+
 ## `doctrine:migrations:version --add --all` fails during install
 
 **Symptom:** `var/logs/mautic_prod-*.log` shows

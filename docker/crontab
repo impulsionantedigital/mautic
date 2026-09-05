@@ -13,7 +13,6 @@
 # Every 5 minutes
 */5 * * * * cd /var/www/html && php bin/console mautic:campaigns:trigger --env=prod --no-debug -q
 */5 * * * * cd /var/www/html && php bin/console mautic:campaigns:rebuild --env=prod --no-debug -q
-*/5 * * * * cd /var/www/html && php bin/console mautic:campaigns:resume-stuck --env=prod --no-debug -q
 */5 * * * * cd /var/www/html && php bin/console mautic:webhooks:process --env=prod --no-debug -q
 */5 * * * * cd /var/www/html && php bin/console mautic:contacts:scheduled_export --env=prod --no-debug -q
 
@@ -24,6 +23,12 @@
 0 2 * * * cd /var/www/html && php bin/console mautic:iplookup:download --env=prod --no-debug -q
 0 2 * * * cd /var/www/html && php bin/console mautic:unusedip:delete --env=prod --no-debug -q
 0 3 * * * cd /var/www/html && php bin/console mautic:segments:update --env=prod --no-debug -q
+
+# mautic:campaigns:resume-stuck is intentionally NOT scheduled here: it
+# requires a specific <campaign-id> argument (no "check all campaigns"
+# mode) and is meant to be run manually against one campaign an admin has
+# identified as stuck, e.g.:
+#   php bin/console mautic:campaigns:resume-stuck <campaign-id> --dry-run
 
 # Destructive housekeeping commands - review the retention windows before
 # uncommenting, they permanently delete historical data.
