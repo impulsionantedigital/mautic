@@ -52,6 +52,15 @@ case "${ROLE}" in
                 --admin_email='${MAUTIC_ADMIN_EMAIL:-}' \
                 --admin_password='${MAUTIC_ADMIN_PASSWORD:-}' \
                 --force -n --env=prod --no-debug"
+
+            # mautic:install's final step tries to mark all migrations as
+            # applied (doctrine:migrations:version --add --all) without the
+            # migrations metadata table existing yet on a truly fresh
+            # database, which makes that specific step fail (logged, but
+            # non-fatal to the install). Fix it up so future
+            # mautic:update:apply runs have accurate migration state.
+            as_www_data "php bin/console doctrine:migrations:sync-metadata-storage --env=prod --no-debug"
+            as_www_data "php bin/console doctrine:migrations:version --add --all --no-interaction --env=prod --no-debug"
         fi
 
         render_local_config

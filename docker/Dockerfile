@@ -57,10 +57,17 @@ COPY . .
 # exist during the build. Runs composer.json's own post-install-cmd chain:
 # npm ci (webpack build via package.json's postinstall), patch-package, the
 # GrapesJS builder plugin build, and mautic:assets:generate/assets:install.
+# node_modules is kept in the final image on purpose: Mautic's
+# AssetGenerationHelper regenerates media/js/libraries.js and
+# media/css/libraries.css by re-reading raw source files straight out of
+# node_modules whenever it decides they're stale (which happens at runtime,
+# not just at build time - a fresh config/local.php on every boot is enough
+# to trip it). Deleting node_modules after the build makes that regeneration
+# throw and blows up every page that loads it, including the login page.
 RUN composer install --no-dev --no-interaction --optimize-autoloader --prefer-dist \
         --ignore-platform-req=ext-imap \
     && npm cache clean --force \
-    && rm -rf node_modules plugins/GrapesJsBuilderBundle/node_modules /root/.npm
+    && rm -rf plugins/GrapesJsBuilderBundle/node_modules /root/.npm
 
 # Runtime writable paths
 RUN mkdir -p var/cache var/logs var/spool var/tmp media/files media/images media/assets \
