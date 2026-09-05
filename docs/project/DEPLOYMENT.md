@@ -122,11 +122,16 @@ MAUTIC_MAILER_DSN=mautic+ses+api://ACCESS_KEY:SECRET_KEY@default?region=us-east-
 ```
 IAM policy needed: `ses:SendEmail`, `ses:SendRawEmail`, `ses:GetSendQuota`.
 
-## Turning on real async sending (optional)
+## Async sending (currently ON in production)
 
 By default `MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT` fall back to `sync://`
-(immediate, in-request sending — the `worker` app has nothing to do). To
-make the `worker` app actually process a queue, set on **all three apps**:
+(immediate, in-request sending — the `worker` app has nothing to do). This
+fork currently has them set to the async DSNs below on all three apps, so
+`web`/`cron` enqueue instead of sending inline, and `worker` does the real
+SMTP send. Confirm with the worker's logs:
+`Consuming messages from transports "email, hit, failed"`.
+
+To (re)enable, set on **all three apps**:
 ```
 MAUTIC_MESSENGER_DSN_EMAIL=doctrine://default?queue_name=email
 MAUTIC_MESSENGER_DSN_HIT=doctrine://default?queue_name=hit
