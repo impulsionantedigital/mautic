@@ -4,6 +4,15 @@ This is the **impulsionantedigital/mautic** fork (branch `7.x`), running on
 **EasyPanel** (self-hosted Docker/Swarm PaaS) as three containers built from
 one image: `docker/Dockerfile`.
 
+**This same codebase/image is reused as a template for multiple separate
+client Mautic instances** (own domain, own DB, own set of `web`/`cron`/
+`worker` apps per client - e.g. `trilhasdearuanda.com.br`,
+`gpsdapena.com.br`), sharing one AWS SES SMTP user across clients. When
+deploying a new client on this stack, see
+`docs/project/DEPLOYMENT.md` and note the per-client gotcha in
+`docs/project/TROUBLESHOOTING.md` about SES sender verification being
+per-domain.
+
 This file is the always-loaded entry point for AI agents (see `CLAUDE.md`).
 It's meant to be short. For depth, follow the links below instead of
 duplicating detail here.

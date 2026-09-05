@@ -128,6 +128,34 @@ Compare against the actual IP of the EasyPanel server you deployed to
 CNAME) at the domain's DNS provider — nothing on the EasyPanel/Mautic side
 can fix a wrong DNS target.
 
+## New domain deployed from this same stack: test email doesn't arrive, another domain does
+
+**Context:** this Docker setup is reused as a template for multiple
+separate Mautic instances (different domain, DB, and `MAUTIC_SITE_URL`
+per client - e.g. `trilhasdearuanda.com.br`, `gpsdapena.com.br` - but the
+same shared AWS SES SMTP user/password across all of them).
+
+**Symptom:** test email works fine on one domain but not another, even
+though the app config (DSN, credentials) is otherwise identical between
+them.
+
+**Root cause:** AWS SES only delivers mail from a **verified**
+sender identity - verification is per domain (or per individual email
+address), not account-wide. A shared SES SMTP user doesn't imply every
+`MAUTIC_MAILER_FROM_EMAIL` domain sending through it is verified.
+
+**Fix:** in AWS SES Console → Verified identities, confirm the new
+domain (or the specific `MAUTIC_MAILER_FROM_EMAIL` address) is verified
+(DKIM/SPF DNS records for domain verification is the recommended route).
+Also check the SES account isn't still in sandbox mode. If unsure whether
+this is really the cause, check `var/logs/mautic_prod*.log` in the
+affected app's `web` container for the SMTP rejection reason (e.g. "Email
+address is not verified", "554 Message rejected").
+
+**Takeaway for every new client domain deployed on this stack:** verify
+the sending domain in SES *before* wiring up `MAUTIC_MAILER_DSN` /
+`MAUTIC_MAILER_FROM_EMAIL` for it, to skip this failure mode entirely.
+
 ## OPEN: email stopped arriving after enabling async messenger
 
 **Status: not diagnosed. Currently mitigated by staying in sync mode.**
