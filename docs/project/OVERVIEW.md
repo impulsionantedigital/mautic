@@ -42,8 +42,10 @@ duplicating detail here.
   2026-09-05, after a server reformat + clean redeploy. Custom domain DNS
   and the media bind-mount split (see Decisions/Troubleshooting) were the
   last two blockers, both resolved.
-- `cron` and `worker` apps have **not been created yet** in EasyPanel — only
-  `web` exists so far. Follow `docs/project/DEPLOYMENT.md` steps 3-4 to add them.
+- All three apps (`web`, `cron`, `worker`) are created and confirmed
+  running: cron jobs succeed every minute/5 minutes, worker consumes the
+  `failed` transport, real email delivery tested and working
+  (`mailer:test`).
 - No Docker `HEALTHCHECK` yet — zero-downtime redeploys can have a brief
   window where the domain shows "Service is not reachable" between the
   old container stopping and the new one finishing boot. See
