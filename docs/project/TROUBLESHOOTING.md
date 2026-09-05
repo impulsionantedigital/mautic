@@ -128,6 +128,35 @@ Compare against the actual IP of the EasyPanel server you deployed to
 CNAME) at the domain's DNS provider — nothing on the EasyPanel/Mautic side
 can fix a wrong DNS target.
 
+## OPEN: email stopped arriving after enabling async messenger
+
+**Status: not diagnosed. Currently mitigated by staying in sync mode.**
+
+**Symptom:** after setting `MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT` to
+`doctrine://default?queue_name=...` on all three apps, `worker` logs
+correctly showed `Consuming messages from transports "email, hit,
+failed"`, but test emails (`mailer:test` and a real send from the UI)
+stopped being delivered. Reverting both env vars back to `sync://`
+(unset/removed) fixed delivery immediately.
+
+**Not yet checked, worth trying first when revisiting this:**
+- `worker` container logs *at the exact moment* of a test send — did it
+  actually pick up a message from the `email` transport, and if so, did
+  it log a delivery success or an exception?
+- The `messenger_messages` table directly (`SELECT * FROM
+  messenger_messages` in phpMyAdmin/DbGate) — is it accumulating
+  unconsumed rows (worker not polling/crashing) or rows stuck with
+  `delivered_at IS NULL` and growing `attempts` (worker picking them up
+  but failing to send, e.g. hitting the SES rate limit or a DSN quirk
+  under the `doctrine://` wrapping)?
+- Whether `mailer:test`'s `SendEmailMessage` really routes through the
+  `email` transport as expected (it does per `app/config/config.php`) and
+  whether that matters differently than a real campaign send.
+- Retry/backoff settings — `RetryStrategy` (see
+  `app/bundles/MessengerBundle/Retry/RetryStrategy.php`) applies to the
+  `email`/`hit` transports; a message could be silently retrying instead
+  of failing loud.
+
 ## `cron` app: `/bin/sh: 1: cron: not found`
 
 **Symptom:** the `cron` app's "Comando" (Command override) field was set

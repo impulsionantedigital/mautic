@@ -45,18 +45,18 @@ duplicating detail here.
 - All three apps (`web`, `cron`, `worker`) are created and confirmed
   running: cron jobs succeed every minute/5 minutes, real email delivery
   tested and working (`mailer:test`).
-- **Async messenger is ON**: `MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT` are set
-  to `doctrine://default?queue_name=...` on all three apps. `worker` logs
-  confirm `Consuming messages from transports "email, hit, failed"`. This
-  means `web`/`cron` now enqueue instead of sending inline — `worker`
-  does the real SMTP send. If email stops arriving after a future change,
-  check `worker` is actually running and check the `messenger_messages`
-  DB table for a growing backlog before assuming the mailer DSN itself is
-  broken.
+- **Async messenger tried, then turned back off (2026-09-05).**
+  `MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT` were set to
+  `doctrine://default?queue_name=...` on all three apps, and `worker`
+  logs did confirm `Consuming messages from transports "email, hit,
+  failed"` — but test sends stopped arriving. Switching back to `sync://`
+  (removing/unsetting both vars) fixed delivery immediately. **Root cause
+  not yet diagnosed** — see `docs/project/TROUBLESHOOTING.md` for what's
+  known. Currently running in **sync mode**: `web`/`cron` send inline,
+  `worker` sits idle on the `failed` transport only, matching the original
+  default deploy. Don't re-enable async without checking `worker` logs
+  and the `messenger_messages` table during the test this time.
 - No Docker `HEALTHCHECK` yet — zero-downtime redeploys can have a brief
   window where the domain shows "Service is not reachable" between the
   old container stopping and the new one finishing boot. See
   `docs/project/TROUBLESHOOTING.md`.
-- Async messenger transports (`MAUTIC_MESSENGER_DSN_EMAIL`/`_HIT`) are left at
-  the default `sync://` — the `worker` app (once created) will sit mostly
-  idle until/unless these are pointed at `doctrine://default?queue_name=...`.
