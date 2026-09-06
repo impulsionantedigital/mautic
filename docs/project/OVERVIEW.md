@@ -69,3 +69,26 @@ duplicating detail here.
   window where the domain shows "Service is not reachable" between the
   old container stopping and the new one finishing boot. See
   `docs/project/TROUBLESHOOTING.md`.
+- Second client (`gpsdapena.com.br`) deployed on the same pattern; test
+  email initially failed there (unverified SES sending domain, unrelated
+  to this codebase - see Troubleshooting), fixed by verifying the domain
+  in AWS SES.
+- **Backups: deferred, not yet automated (2026-09-06).** DB backup has a
+  native path (the MySQL service's own "Cópias de segurança" tab in
+  EasyPanel - not yet configured). File backup for `media/files`,
+  `media/images`, `media/dashboards` (real user data - not `media/assets`,
+  that one's a disposable build artifact, see Decisions) needs a
+  **host-level** `aws s3 sync` cron job, not EasyPanel's built-in "Criar
+  Backup de Volume" - confirmed by testing that EasyPanel's "Volume"
+  mount type does **not** share storage across apps even with an
+  identical name (each app gets its own isolated volume), which would
+  break the web/cron/worker sharing these Bind mounts provide. A full
+  script + host crontab setup was worked out (AWS CLI on the host, a
+  dedicated `mautic-backup` profile, `aws s3 sync` per client site) and
+  is ready to hand over again whenever this gets picked back up - ask for
+  it; it's intentionally not a repo file since it's host ops commands
+  with credentials, not application code.
+- An IAM access key for a `mautic` S3 user (bucket `mautic-selfhosted`,
+  `sa-east-1`) was shared in chat while planning the backup above. If
+  backups get set up later using that key, rotate it in IAM first since
+  it passed through a chat transcript.
