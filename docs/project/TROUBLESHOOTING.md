@@ -313,3 +313,24 @@ provider's own panel) before trusting the new key.** Once confirmed:
 `ssh-keygen -R <ip>`, then reconnect and confirm the fingerprint shown
 matches what the hosting provider/your own records say, before typing
 `yes`.
+
+## Changing Configuration > Miscellaneous language (e.g. to pt_BR) throws a 500
+
+**Symptom:** Configuration → Miscellaneous → pick a non-`en_US` language →
+Save → generic "Uh oh! I think I broke it" 500 page.
+
+**Root cause:** `en_US` is the only language bundled in the image
+(`app/bundles/*/Translations/en_US`). Any other language is downloaded
+and extracted on-demand at runtime by
+`Mautic\CoreBundle\Helper\LanguageHelper`/`Language\Installer`, which
+writes to `<root>/translations/<locale>/...`. `docker/Dockerfile`'s
+runtime-writable-paths step only `chown`'d `var/`, `media/`, and `config/`
+to `www-data` — `translations/` stayed root-owned from the build's
+`COPY . .`, so `www-data` (Apache) couldn't create the directory and the
+uncaught filesystem exception surfaced as a 500.
+
+**Fix:** added `translations` to both the `mkdir -p` and
+`chown`/`chmod ug+rwX` lists in `docker/Dockerfile`'s "Runtime writable
+paths" step, same pattern as `var`/`media`/`config`. Requires a rebuild +
+redeploy of the image to take effect (a chown fix in the Dockerfile
+doesn't retroactively fix a running container's filesystem).

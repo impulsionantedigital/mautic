@@ -70,9 +70,13 @@ RUN composer install --no-dev --no-interaction --optimize-autoloader --prefer-di
     && rm -rf plugins/GrapesJsBuilderBundle/node_modules /root/.npm
 
 # Runtime writable paths
-RUN mkdir -p var/cache var/logs var/spool var/tmp media/files media/images media/assets \
-    && chown -R www-data:www-data /var/www/html/var /var/www/html/media /var/www/html/config \
-    && chmod -R ug+rwX /var/www/html/var /var/www/html/media /var/www/html/config
+#
+# translations/ is included because language packs (anything besides the
+# bundled en_US) are downloaded and extracted here on-demand from the UI
+# (Configuration > Miscellaneous) at runtime by www-data, not at build time.
+RUN mkdir -p var/cache var/logs var/spool var/tmp media/files media/images media/assets translations \
+    && chown -R www-data:www-data /var/www/html/var /var/www/html/media /var/www/html/config /var/www/html/translations \
+    && chmod -R ug+rwX /var/www/html/var /var/www/html/media /var/www/html/config /var/www/html/translations
 
 COPY docker/crontab /etc/mautic-crontab
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
