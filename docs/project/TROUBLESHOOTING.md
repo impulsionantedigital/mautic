@@ -334,3 +334,36 @@ uncaught filesystem exception surfaced as a 500.
 paths" step, same pattern as `var`/`media`/`config`. Requires a rebuild +
 redeploy of the image to take effect (a chown fix in the Dockerfile
 doesn't retroactively fix a running container's filesystem).
+
+## Running the PHPUnit suite on a Mac with no ddev/Docker
+
+`AGENTS.md` assumes ddev. On a machine without Docker you can still run
+the suite natively — `.env.test` already points at `127.0.0.1` /
+`mautictest` / `root` with an empty password, which is exactly what a
+Homebrew MySQL gives you:
+
+```bash
+brew install php@8.2 mysql@8.4
+brew services start mysql@8.4
+export PATH="/opt/homebrew/opt/php@8.2/bin:/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+```
+
+Three things bite in that order, all of them environment and not code:
+
+1. **`Allowed memory size of 134217728 bytes exhausted` in
+   `ServiceReferenceGraph.php`** — building the DI container needs more
+   than the CLI default. Run PHPUnit as
+   `php -d memory_limit=-1 bin/phpunit -c app/phpunit.xml.dist <path>`.
+2. **`RuntimeException: The file var/sass/app.output.css doesn't exist`**,
+   erroring most functional tests — the login page the test client renders
+   needs the compiled CSS. Fix once with
+   `php -d memory_limit=-1 bin/console sass:build --env=test`.
+3. **PHPStan: `An exception occurred while establishing a connection to
+   figure out your platform version`** — `bin/phpstan` loads the **prod**
+   container (via `tests/object-manager.php`), which reads `config/local.php`.
+   That file doesn't exist on a fresh clone, so `db_host` is empty.
+   Create an empty database and a gitignored `config/local.php` pointing at
+   it (`db_driver`, `db_host`, `db_port`, `db_name`, `db_user`,
+   `db_password`, `site_url`), then `rm -rf var/cache/prod`. Note this is
+   *not* the same database the tests use — `config_test.php` reads `DB_*`
+   from `.env.test` and ignores `local.php`.

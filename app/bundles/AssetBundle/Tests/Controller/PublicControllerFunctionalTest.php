@@ -6,6 +6,7 @@ namespace Mautic\AssetBundle\Tests\Controller;
 
 use Mautic\AssetBundle\Entity\Download;
 use Mautic\AssetBundle\Tests\Asset\AbstractAssetTestCase;
+use Mautic\CoreBundle\Helper\ClickthroughHelper;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -130,6 +131,116 @@ final class PublicControllerFunctionalTest extends AbstractAssetTestCase
         $this->client->request('GET', '/asset/'.$asset->getSlug());
         $this->assertResponseStatusCodeSame(Response::HTTP_FOUND);
         $this->assertResponseRedirects($remotePath);
+    }
+
+    public function testRemoteAssetRedirectForwardsCampaignQueryParameters(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset With Campaign Params',
+            'storage' => 'remote',
+            'path'    => 'https://example.com/remote-asset.png',
+        ]);
+
+        $this->em->clear();
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?utm_source=instagram&utm_campaign=lancamento&sck=bio');
+
+        $this->assertResponseRedirects('https://example.com/remote-asset.png?utm_source=instagram&utm_campaign=lancamento&sck=bio');
+    }
+
+    public function testRemoteAssetRedirectMergesWithQueryAlreadyOnRemotePath(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset With Existing Query',
+            'storage' => 'remote',
+            'path'    => 'https://pay.example.com/W123?off=abc',
+        ]);
+
+        $this->em->clear();
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?utm_source=instagram');
+
+        $this->assertResponseRedirects('https://pay.example.com/W123?off=abc&utm_source=instagram');
+    }
+
+    public function testRemoteAssetRedirectPrefersIncomingValueOnKeyCollision(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset With Colliding Query',
+            'storage' => 'remote',
+            'path'    => 'https://pay.example.com/W123?sck=configured',
+        ]);
+
+        $this->em->clear();
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?sck=clicked');
+
+        $this->assertResponseRedirects('https://pay.example.com/W123?sck=clicked');
+    }
+
+    public function testRemoteAssetRedirectDoesNotForwardMauticInternalQueryParameters(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset With Internal Params',
+            'storage' => 'remote',
+            'path'    => 'https://example.com/remote-asset.png',
+        ]);
+
+        $this->em->clear();
+
+        $clickthrough = ClickthroughHelper::encodeArrayForUrl(['channel' => ['email' => 1]]);
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?ct='.$clickthrough.'&stream=0&utm_source=instagram');
+
+        $this->assertResponseRedirects('https://example.com/remote-asset.png?utm_source=instagram');
+    }
+
+    public function testRemoteAssetRedirectKeepsFragmentAtTheEndOfTheUrl(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset With Fragment',
+            'storage' => 'remote',
+            'path'    => 'https://example.com/page#pricing',
+        ]);
+
+        $this->em->clear();
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?utm_source=instagram');
+
+        $this->assertResponseRedirects('https://example.com/page?utm_source=instagram#pricing');
+    }
+
+    public function testRemoteAssetRedirectLeavesUrlUntouchedWhenOnlyInternalParamsArePresent(): void
+    {
+        $this->logoutUser();
+
+        $asset = $this->createAsset([
+            'title'   => 'Remote Asset Without Campaign Params',
+            'storage' => 'remote',
+            'path'    => 'https://example.com/remote-asset.png',
+        ]);
+
+        $this->em->clear();
+
+        $this->client->followRedirects(false);
+        $this->client->request('GET', '/asset/'.$asset->getSlug().'?stream=0');
+
+        $this->assertResponseRedirects('https://example.com/remote-asset.png');
     }
 
     public function testDownloadActionWithMissingLocalFile(): void

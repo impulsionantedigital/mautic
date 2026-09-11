@@ -39,6 +39,11 @@ duplicating detail here.
    `MAUTIC_MESSENGER_DSN_FAILED`), **not** by Mautic's admin UI — that UI
    field writes to a `local.php` parameter nothing in this codebase reads
    for actual sending.
+3. **Remote assets forward campaign query params**: a small core patch to
+   `AssetBundle\Controller\PublicController` so that clicking a remote
+   asset carries `utm_*`, `sck`, `gclid` etc. through to the destination
+   instead of dropping them at the redirect (Mautic's own `ct`/`stream` are
+   stripped). See `docs/project/DECISIONS.md`; upstreamable as a PR.
 
 ## Platform requirements (non-negotiable)
 

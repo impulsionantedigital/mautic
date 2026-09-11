@@ -1,8 +1,50 @@
 # Decisions
 
-One entry per non-obvious technical decision in this fork's deployment
-setup. Newest at the top. Link back here from commit messages when a
+One entry per non-obvious technical decision in this fork — deployment
+setup and the few code patches it carries on top of upstream. Newest at
+the top. Link back here from commit messages when a
 decision changes.
+
+## Remote assets forward the click's campaign query params (core patch)
+
+`AssetBundle\Controller\PublicController::remoteRedirectResponse()` used to
+redirect to `$entity->getRemotePath()` verbatim, throwing away the whole
+query string of the click. So a link like
+`/asset/<slug>?utm_source=instagram&sck=bio` tracked the download in Mautic
+but handed the destination (a checkout, a Hotmart page, an external file) a
+naked URL — no UTMs, no `sck`/`src`, no `gclid`/`fbclid`. Attribution died at
+the redirect.
+
+**Fix:** `remoteRedirectResponse()` now merges the incoming query into the
+remote URL, which is exactly what the core's own tracked-link redirect
+(`PageBundle\Controller\PublicController::redirectAction`, via
+`UrlHelper::appendQueryToUrl`) already did — remote assets were the
+exception, not the rule.
+
+Rules of the merge:
+
+- Everything the visitor brings is forwarded, **except** Mautic's own
+  parameters, listed in `PublicController::INTERNAL_QUERY_PARAMS`
+  (`ct`, the clickthrough blob identifying the contact/channel in email
+  links, and `stream`). `ct` in particular must not leak to a third-party
+  host.
+- Params already configured on the asset's remote URL are kept and merged,
+  not duplicated; on a key collision **the value from the click wins** over
+  the configured one (real campaign origin beats static config).
+- A URL fragment stays at the end (`...?utm_source=x#pricing`).
+- If nothing survives the filter, the remote URL is redirected to untouched.
+
+**Why a core patch and not a plugin:** `AssetEvents` has no event that
+exposes the download response, so there is no hook to rewrite the `Location`
+header from outside — only `kernel.response` in a custom bundle this fork
+doesn't otherwise need. The patch is ~25 lines in one method and is
+upstreamable as-is (it aligns asset redirects with link redirects), which is
+the real exit from the rebase-conflict risk: send it to `mautic/mautic`.
+
+**Cookies are explicitly out of scope.** Mautic can only read cookies on its
+own domain (`mtc_id`, `mautic_device_id`) and cannot set a cookie on the
+destination domain. Anything that needs to cross has to cross as a query
+param.
 
 ## Single Docker image, three roles via Command override
 

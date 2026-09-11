@@ -18,6 +18,11 @@ use Symfony\Component\HttpFoundation\Response;
 class PublicController extends AbstractFormController
 {
     /**
+     * Query parameters Mautic consumes itself, which must never be handed to the remote host.
+     */
+    private const INTERNAL_QUERY_PARAMS = ['ct', 'stream'];
+
+    /**
      * Handles public download of assets by slug.
      *
      * This method performs the initial validation of the slug, retrieves the
@@ -98,7 +103,35 @@ class PublicController extends AbstractFormController
     {
         $model->trackDownload($entity, $request);
 
-        return new RedirectResponse($entity->getRemotePath());
+        return new RedirectResponse($this->buildRemoteRedirectUrl($entity->getRemotePath(), $request));
+    }
+
+    /**
+     * Forwards the query of the click (utm_*, sck, gclid, and whatever else the campaign
+     * carries) to the remote location, the way tracked link redirects already do.
+     *
+     * Mautic's own parameters are stripped, and when the same parameter exists on both
+     * sides the value from the click wins over the one configured on the asset.
+     */
+    private function buildRemoteRedirectUrl(string $remotePath, Request $request): string
+    {
+        $forwarded = array_diff_key($request->query->all(), array_flip(self::INTERNAL_QUERY_PARAMS));
+
+        if ([] === $forwarded) {
+            return $remotePath;
+        }
+
+        $urlParts = explode('#', $remotePath, 2);
+        $fragment = $urlParts[1] ?? null;
+
+        $pathParts   = explode('?', $urlParts[0], 2);
+        $remoteQuery = $pathParts[1] ?? '';
+
+        parse_str($remoteQuery, $remoteParams);
+
+        $url = $pathParts[0].'?'.http_build_query(array_merge($remoteParams, $forwarded));
+
+        return null === $fragment ? $url : $url.'#'.$fragment;
     }
 
     /**
