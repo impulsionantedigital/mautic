@@ -44,6 +44,10 @@ duplicating detail here.
    asset carries `utm_*`, `sck`, `gclid` etc. through to the destination
    instead of dropping them at the redirect (Mautic's own `ct`/`stream` are
    stripped). See `docs/project/DECISIONS.md`; upstreamable as a PR.
+4. **`symfony/dom-crawler` + `symfony/css-selector` as runtime deps** of
+   `mautic/core-lib` (`app/composer.json`) — upstream only has them in
+   `require-dev`, which made every email save 500 under `--no-dev`. See
+   `docs/project/DECISIONS.md`; upstreamable as a PR.
 
 ## Platform requirements (non-negotiable)
 

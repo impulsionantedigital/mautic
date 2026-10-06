@@ -151,6 +151,25 @@ running a real `composer update` for just those two packages.
 **Why require, not require-dev:** SES sending/bounce-handling is a
 production concern, and this Dockerfile runs `composer install --no-dev`.
 
+## `symfony/dom-crawler` + `symfony/css-selector` added to `mautic/core-lib`'s `require`
+
+`Mautic\EmailBundle\Validator\ValidEmailLinksValidator` (runs on every
+email save) does `new Crawler($html)->filter('a[href]')`, but upstream
+only lists `symfony/dom-crawler` in the root `require-dev`, and
+`filter()` needs `symfony/css-selector`, which was only pulled in
+transitively by dev tooling. Under this image's `composer install
+--no-dev`, saving any email 500'd with `Class
+"Symfony\Component\DomCrawler\Crawler" not found`.
+
+**Fix:** both added to `app/composer.json` (`mautic/core-lib`, the
+package whose runtime code uses them), and `composer update
+mautic/core-lib` run. The lock change is purely moving `dom-crawler`,
+`css-selector` and `masterminds/html5` from `packages-dev` to
+`packages` at the same versions. Upstream bug, upstreamable as a PR.
+
+**Checked:** no other non-test code in `app/bundles`/`plugins` imports
+a namespace that's only provided by a `packages-dev` package.
+
 ## Migrations metadata table needs an explicit sync after fresh install
 
 `mautic:install`'s final step runs

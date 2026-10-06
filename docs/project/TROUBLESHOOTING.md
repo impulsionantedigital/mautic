@@ -335,6 +335,26 @@ paths" step, same pattern as `var`/`media`/`config`. Requires a rebuild +
 redeploy of the image to take effect (a chown fix in the Dockerfile
 doesn't retroactively fix a running container's filesystem).
 
+## Saving any email (builder or code mode) throws a 500
+
+**Symptom:** Channels → Emails → edit/new → Save → generic "Uh oh! I
+think I broke it" 500 page. `var/logs/mautic_prod-<date>.php` shows:
+```
+mautic.CRITICAL: Uncaught PHP Exception Error: "Class "Symfony\Component\DomCrawler\Crawler" not found"
+at /var/www/html/app/bundles/EmailBundle/Validator/ValidEmailLinksValidator.php line 49
+```
+
+**Root cause:** the email link validator uses `symfony/dom-crawler`
+(and `symfony/css-selector` for `->filter()`), but upstream only
+declares them as dev dependencies. `docker/Dockerfile` runs
+`composer install --no-dev`, so neither exists in the image.
+
+**Fix:** declared both in `app/composer.json`'s `require` and updated
+`composer.lock` (see `docs/project/DECISIONS.md`). Needs a rebuild +
+redeploy of every client's apps. The unrelated `HTMLPurifier ...
+Serializer not writable` warnings in the same log are harmless (it
+just falls back to not caching its definitions).
+
 ## Running the PHPUnit suite on a Mac with no ddev/Docker
 
 `AGENTS.md` assumes ddev. On a machine without Docker you can still run
