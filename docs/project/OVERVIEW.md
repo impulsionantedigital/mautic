@@ -74,6 +74,11 @@ duplicating detail here.
   `worker` sits idle on the `failed` transport only, matching the original
   default deploy. Don't re-enable async without checking `worker` logs
   and the `messenger_messages` table during the test this time.
+- **Configuration-screen settings now persist (2026-10-28)**: they used to
+  vanish on every redeploy because `config/local.php` was rewritten from
+  env vars only. Fixed in `docker/render-local-config.php` (merge) +
+  a new `config/` bind mount on all three apps - existing client
+  deployments must add that mount by hand, see Troubleshooting.
 - No Docker `HEALTHCHECK` yet — zero-downtime redeploys can have a brief
   window where the domain shows "Service is not reachable" between the
   old container stopping and the new one finishing boot. See

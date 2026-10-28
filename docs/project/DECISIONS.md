@@ -58,16 +58,42 @@ apps only differ in what they run, not what they contain.
 
 ## `config/local.php` is regenerated from env vars on every boot
 
-`docker/render-local-config.php` writes `config/local.php` fresh every time
-a container starts, for all three roles. Nothing persists it across
-restarts or between containers.
+`docker/render-local-config.php` runs every time a container starts, for
+all three roles. It **merges** into the existing `config/local.php`: the
+infrastructure keys it manages (DB, `site_url`, `secret_key`, mailer
+from, API flags, trusted proxies/hosts) are forced from env vars, and
+every other key already in the file is kept. `config/` is a bind mount
+shared by `web`, `cron` and `worker` (same host path), so it survives
+redeploys and all three roles see the same file.
 
-**Why:** EasyPanel/Docker is the source of truth for configuration (env
-vars per app), not a file baked into an image or living on a volume. This
-also means the Mautic admin UI's "Configuration" screens are **not** where
-you change infrastructure-level settings (DB, mailer, site URL) — they get
-overwritten on the next restart. Only settings genuinely meant to be
-edited by admins through the UI (most of Configuration) are safe there.
+**Why:** EasyPanel/Docker env vars stay the source of truth for
+infrastructure settings — editing those in the admin UI's Configuration
+screen gets overwritten on the next restart. But Mautic stores *all* of
+its UI-editable Configuration (default language, allowed asset
+extensions, ...) in that same `local.php`, so the file itself has to
+persist. The original version of this script overwrote the file from
+scratch with no mount, which silently wiped every UI setting on each
+redeploy (see TROUBLESHOOTING, "Configuration changes disappear").
+
+A few UI settings can also be **pinned per client** from optional env vars
+(`MAUTIC_LOCALE`, `MAUTIC_DEFAULT_TIMEZONE`, `MAUTIC_ASSET_MAX_SIZE`,
+`MAUTIC_ASSET_ALLOWED_EXTENSIONS`). Set → forced on every boot like the
+infra keys; unset → the UI owns it. Pinning was chosen over "default only
+if missing" because Mautic writes *every* field of every tab to
+`local.php` on the first Save, so a fill-if-missing default would stop
+applying the moment anyone saves the Configuration screen.
+
+Two things ride along so a pinned value actually works:
+- `MAUTIC_LOCALE` → the **pt_BR pack is committed** in
+  `translations/pt_BR/` (~830 KB, `.gitignore` exception), so it's in the
+  image with no network dependency at boot. For any other locale,
+  `docker/install-language-pack.php` downloads the pack from
+  `language-packs.mautic.com` on every boot (`translations/` isn't
+  persisted; same source/layout as the UI download). To refresh pt_BR:
+  `rm -rf translations/pt_BR && MAUTIC_LOCALE=pt_BR php docker/install-language-pack.php`, then commit.
+- `MAUTIC_ASSET_MAX_SIZE` above 32 → `entrypoint.sh` writes
+  `zzz-mautic-upload.ini` raising PHP's `upload_max_filesize`/
+  `post_max_size` (named `zzz-` so it loads after `zz-mautic.ini`).
 
 ## Mail/queue transports are env vars, not `local.php` params
 
