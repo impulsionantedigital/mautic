@@ -49,6 +49,11 @@ duplicating detail here.
    `require-dev`, which made every email save 500 under `--no-dev`. See
    `docs/project/DECISIONS.md`; upstreamable as a PR.
 
+5. **New landing pages/emails/dynamic content/SMS/notifications default to
+   the instance's default language** instead of upstream's hardcoded `en`:
+   `CoreBundle\Form\Extension\DefaultTranslationLanguageExtension`. See
+   `docs/project/DECISIONS.md`; upstreamable as a PR.
+
 ## Platform requirements (non-negotiable)
 
 - MySQL **8.4.0+** or MariaDB **10.11.0+** — 8.0 is rejected by the installer.

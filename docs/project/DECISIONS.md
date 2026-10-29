@@ -244,3 +244,15 @@ EasyPanel runs Docker in Swarm mode. Unlike plain `docker run`, Swarm does
 `/etc/easypanel/mautic-media-<slug>`) before configuring the bind mount in
 each app (web/cron/worker all point at the same host path so they share
 uploaded media/files).
+
+## New translatable content defaults to the configured language
+
+Upstream's `TranslationEntityTrait` hardcodes `$language = 'en'` for
+landing pages, emails, dynamic content, SMS and notifications, so the
+"Idioma" field on a new item always showed English even with Default
+language = `pt_BR`. `CoreBundle\Form\Extension\DefaultTranslationLanguageExtension`
+(a `FormType` extension, auto-registered) swaps that `'en'` for the
+`locale` parameter on `PRE_SET_DATA`, only for **new** entities still on
+the hardcoded `'en'`; existing items, explicit choices and English
+instances are untouched. Chosen over patching the five models'
+`getEntity()` so it's one small, upstreamable file with a unit test.
