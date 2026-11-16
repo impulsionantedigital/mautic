@@ -456,3 +456,29 @@ and `config/local.php` is rendered from env at container boot
 (`docker/render-local-config.php`), so changing env vars requires a
 **redeploy**. Verify with `grep s3_ config/local.php` inside the container.
 Only uploads made after the feature is on go to S3; older files stay local.
+
+## Campaign "Contact tags" condition loses its tags after saving
+
+**Symptom:** in the campaign builder, the *Contact tags* condition
+(`lead.tags`) is saved with one or more tags, but reopening it after a page
+refresh shows the tag field empty. Worse, the condition always evaluates to
+**no** at runtime, so every contact takes the "no" branch even when it has
+the tag.
+
+**How to spot it in data:** `GET /api/campaigns/{id}` shows the event's
+`properties` with the selected tag IDs only in the nested
+`properties.properties.tags` (raw form input) while the top-level
+`properties.tags` — the value both the edit form and
+`TagRepository::checkLeadByTags()` read — is `[]`. The *Modify contact's
+tags* action is unaffected: its top-level `add_tags`/`remove_tags` hold tag
+names.
+
+**Root cause:** upstream `CampaignEventLeadTagsType` set
+`'by_reference' => false` on its `TagType` field. With that option the
+submitted value reaches `TagEntityModelTransformer::reverseTransform()` as a
+Doctrine `ArrayCollection`, which it doesn't handle, so it returns `[]`.
+
+**Fix:** removed the option (covered by
+`CampaignEventLeadTagsTypeFunctionalTest`). Conditions saved before the fix
+stay broken: after deploying, open each *Contact tags* condition, reselect
+its tags, click update and save the campaign.

@@ -23,7 +23,6 @@ class CampaignEventLeadTagsType extends AbstractType
             TagType::class,
             [
                 'add_transformer' => true,
-                'by_reference'    => false,
                 'attr'            => [
                     'data-placeholder'     => $this->translator->trans('mautic.lead.tags.select_or_create'),
                     'data-no-results-text' => $this->translator->trans('mautic.lead.tags.enter_to_create'),
