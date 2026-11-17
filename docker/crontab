@@ -15,9 +15,9 @@
 # one still going exits instead of double-processing.
 * * * * * cd /var/www/html && php bin/console mautic:campaigns:rebuild --env=prod --no-debug -q
 * * * * * cd /var/www/html && php bin/console mautic:campaigns:trigger --env=prod --no-debug -q
+* * * * * cd /var/www/html && php bin/console mautic:webhooks:process --env=prod --no-debug -q
 
 # Every 5 minutes
-*/5 * * * * cd /var/www/html && php bin/console mautic:webhooks:process --env=prod --no-debug -q
 */5 * * * * cd /var/www/html && php bin/console mautic:contacts:scheduled_export --env=prod --no-debug -q
 
 # Every 20 minutes
