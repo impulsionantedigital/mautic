@@ -16,3 +16,6 @@ config/local.php
 *.md
 !README.md
 docs
+
+# Local developer tooling (e.g. the Mautic MCP server), not part of the app image
+tools

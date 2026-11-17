@@ -1,0 +1,21 @@
+{
+  "name": "mautic-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server exposing the Mautic REST API (OAuth2 client credentials).",
+  "type": "module",
+  "bin": {
+    "mautic-mcp": "src/index.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  }
+}

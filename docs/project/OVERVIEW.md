@@ -60,6 +60,13 @@ duplicating detail here.
    vars are set. See `docs/project/DEPLOYMENT.md` and
    `docs/project/DECISIONS.md`.
 
+7. **Local MCP server for the REST API** in `tools/mautic-mcp/`: lets an AI
+   assistant search contacts, change tags and segment/campaign membership
+   and send a template email, using an OAuth2 API credential. Runs on the
+   operator's machine, not in the container (`tools` is in
+   `.dockerignore`). See its README and
+   `docs/specs/2026-11-16-mautic-mcp-server.md`.
+
 ## Platform requirements (non-negotiable)
 
 - MySQL **8.4.0+** or MariaDB **10.11.0+** — 8.0 is rejected by the installer.
