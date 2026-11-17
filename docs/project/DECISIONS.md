@@ -115,6 +115,24 @@ field (Deploy tab) picks the role by passing an argument to
 **Why:** one image to build/version/redeploy instead of three, and the
 apps only differ in what they run, not what they contain.
 
+## Campaign cron jobs run every minute, not every 5
+
+`mautic:campaigns:rebuild` and `mautic:campaigns:trigger` run every minute
+in `docker/crontab` (changed 2026-11-17; was `*/5`, the upstream docs'
+example).
+
+**Why:** campaigns here are short abandoned-checkout sequences with waits
+of 1-5 minutes; at `*/5` a "1 minute" wait and a contact's entry from a
+segment each took up to 5 minutes. Overlap is safe: both commands extend
+`ModeratedCommand`, so a run that finds the previous one still holding the
+lock exits. If a client's DB gets large enough that a run takes over a
+minute, runs just get skipped, not duplicated. This is still "next cron
+tick" (~1 min), not instant: a form/segment *source* only adds the
+membership (`MembershipManager::addContact`), and the first actions wait
+for `campaigns:trigger`. Only decisions (e.g. "submits form") on contacts
+already in a campaign run their follow-up actions in real time
+(`RealTimeExecutioner`).
+
 ## `config/local.php` is regenerated from env vars on every boot
 
 `docker/render-local-config.php` runs every time a container starts, for
